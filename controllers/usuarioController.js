@@ -3,8 +3,8 @@ const bcryptjs = require("bcryptjs");
 
 const asistenteController = {
 	RegistrarUsuario: (req, res) => {
-		const { nombre, correo, contrasena, repetirContrasena } = req.body;
-		if (!nombre || !correo || !contrasena || !repetirContrasena) {
+		const { nombre, correo, contrasena } = req.body;
+		if (!nombre || !correo || !contrasena) {
 			return res.status(400).json({
 				success: false,
 				error: "Faltan datos",
@@ -25,13 +25,6 @@ const asistenteController = {
 			}
 
 			// controlo que la contrasena sea valida
-
-			if (contrasena !== repetirContrasena) {
-				return res.status(400).json({
-					success: false,
-					error: "Las contrasenas no coinciden",
-				});
-			}
 
 			//hasheo la contrasena
 			const saltRounds = 10;
@@ -85,15 +78,10 @@ const asistenteController = {
 
 				// si las credenciales son correctas, almaceno la sesión del usuario
 
-				req.session.user = { UsuarioId: usuario.Id, Rol: usuario.Rol };
+				req.session.user = { UsuarioId: usuario.Id, Rol: usuario.Rol, Correo: usuario.Correo };
 
 				return res.status(200).json({
 					success: true,
-					usuario: {
-						rol: usuario.Rol,
-						correo: usuario.Correo,
-					},
-					message: "Login exitoso",
 				});
 			});
 		});
@@ -122,6 +110,24 @@ const asistenteController = {
 			return res.status(400).json({
 				success: false,
 				error: "No hay una sesión activa",
+			});
+		}
+	},
+
+	checkSession: async (req, res) => {
+		if (req.session && req.session.user) {
+			console.log(req.session.user);
+			return res.status(200).json({
+				success: true,
+				usuario: {
+					rol: req.session.user.Rol,
+					correo: req.session.user.Correo,
+				},
+			});
+		} else {
+			return res.status(401).json({
+				success: false,
+				message: "No autenticado",
 			});
 		}
 	},

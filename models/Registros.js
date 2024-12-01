@@ -22,11 +22,11 @@ const Registros = {
 
     listarConfirmados: (EventoId, callback) => {
         const query = `
-        SELECT r.Asistencia, u.Nombre AS NombreUsuario, u.Correo, e.Nombre, e.Fecha, e.Ubicacion, e.Descripcion
+        SELECT r.Id, r.Asistencia, u.Nombre AS NombreUsuario, u.Id, u.Correo, e.Nombre, e.Fecha, e.Ubicacion, e.Descripcion
         FROM registros r
         JOIN usuarios u ON r.UsuarioId = u.Id
         JOIN eventos e ON r.EventoId = e.Id
-        WHERE e.fecha < CURDATE()
+       
         AND r.EventoId = ?;
         `;
         connectionDB.query(query, [EventoId], callback);
@@ -48,7 +48,7 @@ const Registros = {
             Usuarios u ON r.UsuarioId = u.Id
         JOIN
             eventos e ON r.EventoId = e.Id
-        WHERE
+        WHEREs
             r.UsuarioId = ?
             AND r.EventoId = ?;
         `;
@@ -60,6 +60,13 @@ const Registros = {
         SELECT * FROM registros WHERE UsuarioId = ? AND EventoId = ?;
         `;
         connectionDB.query(query, [UsuarioId, EventoId], callback);
+    },
+
+    CancelarParticipacion : (EventoId, UsuarioId, callback) => {
+        const query = `
+        DELETE FROM registros WHERE EventoId = ? AND UsuarioId = ?;
+        `;
+        connectionDB.query(query, [EventoId, UsuarioId], callback);
     }
 };
 

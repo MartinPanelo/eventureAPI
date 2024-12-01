@@ -16,8 +16,9 @@ const eventoController = {
 				error: "La fecha debe ser posterior a la actual",
 			});
 		}
+		const fechaFormateada = formatDateForMySQL(fecha);
 
-		Evento.AgregarEvento(nombre, fecha, ubicacion, descripcion, (err, results) => {
+		Evento.AgregarEvento(nombre, fechaFormateada, ubicacion, descripcion, (err, results) => {
 			if (err) {
 				console.log("Se produjo el siguiente error:" + err);
 				return res.status(400).json({ success: false, error: err });
@@ -32,6 +33,7 @@ const eventoController = {
 				console.log("Se produjo el siguiente error:" + err);
 				return res.status(400).json({ success: false, error: err });
 			}
+			//console.log(results);
 			return res.status(200).json({ success: true, data: results });
 		});
 	},
@@ -64,16 +66,6 @@ const eventoController = {
 			});
 		}
 
-		// Convertir la fecha de UTC a hora local (Argentina GMT-3)
-const fechaUTC = new Date(fecha); // Fecha recibida en UTC
-const fechaLocal = new Date(fechaUTC.getTime() - (3 * 60 * 60 * 1000)); // Restar 3 horas para ajustar a GMT-3
-
-// Formatear la fecha ajustada a formato MySQL (YYYY-MM-DD HH:MM:SS)
-const fechaMySQL = fechaLocal.toISOString().slice(0, 19).replace("T", " ");
-
-console.log("Fecha ajustada a GMT-3:", fechaMySQL);
-
-
 		// controlo que la fecha sea valida
 		if (new Date(fecha) < new Date()) {
 			return res.status(400).json({
@@ -82,7 +74,9 @@ console.log("Fecha ajustada a GMT-3:", fechaMySQL);
 			});
 		}
 
-		Evento.ModificarEvento(id, nombre, fechaMySQL, ubicacion, descripcion, (err, results) => {
+		// formateo la fecha
+		const fechaFormateada = formatDateForMySQL(fecha);
+		Evento.ModificarEvento(id, nombre, fechaFormateada, ubicacion, descripcion, (err, results) => {
 			if (err) {
 				console.log("Se produjo el siguiente error:" + err);
 				return res.status(400).json({ success: false, error: err });
@@ -109,9 +103,35 @@ console.log("Fecha ajustada a GMT-3:", fechaMySQL);
 		});
 	},
 
-
 	EventosProximos: (req, res) => {
-		Evento.EventosProximos((err, results) => {
+
+		const id = req.session.user?.UsuarioId ?? -1; // -1 es cuando se lista los eventos para un usuario no logueado
+
+		if (!id) {
+			return res.status(400).json({
+				success: false,
+				error: "Faltan datos",
+			});
+		}
+		Evento.EventosProximos(id,(err, results) => {
+			if (err) {
+				console.log("Se produjo el siguiente error:" + err);
+				return res.status(400).json({ success: false, error: err });
+			}
+			return res.status(200).json({ success: true, data: results });
+		});
+	},
+
+
+	EventosInscrito: (req, res) => {
+		const  id  = req.session.user.UsuarioId;
+		if (!id) {
+			return res.status(400).json({
+				success: false,
+				error: "Faltan datos",
+			});
+		}
+		Evento.EventosInscrito(id, (err, results) => {
 			if (err) {
 				console.log("Se produjo el siguiente error:" + err);
 				return res.status(400).json({ success: false, error: err });
@@ -121,4 +141,14 @@ console.log("Fecha ajustada a GMT-3:", fechaMySQL);
 	},
 };
 
+const formatDateForMySQL = (date) => {
+	const d = new Date(date);
+	const year = d.getFullYear();
+	const month = String(d.getMonth() + 1).padStart(2, "0");
+	const day = String(d.getDate()).padStart(2, "0");
+	const hours = String(d.getHours()).padStart(2, "0");
+	const minutes = String(d.getMinutes()).padStart(2, "0");
+	const seconds = String(d.getSeconds()).padStart(2, "0");
+	return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
 module.exports = eventoController;

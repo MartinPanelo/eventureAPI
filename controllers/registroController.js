@@ -5,7 +5,7 @@ const registroController = {
 	AgregarParticipacion: async (req, res) => {
 		try {
 			const { eventoId } = req.body;
-			const usuarioId = req.usuarioLogeado.id;
+			const usuarioId = req.session.user.UsuarioId;
 
 			if (!eventoId || !usuarioId) {
 				return res.status(400).json({
@@ -70,18 +70,17 @@ const registroController = {
 			// Agregar participación
 			const resultado = await agregarParticipacion();
 			return res.status(200).json({ success: true, data: resultado });
-            
 		} catch (error) {
 			console.log("Se produjo el siguiente erroR:", error);
 			return res.status(400).json({ success: false, error: error.message });
 		}
 	},
 
-
-
 	MarcarAsistencia: (req, res) => {
-		const { usuarioId, eventoId, asistencia } = req.body;
-		if ((!usuarioId || !eventoId, !asistencia)) {
+		const { usuarioId, asistencia } = req.body;
+		const { id } = req.params; // id del registro
+		console.log(usuarioId, asistencia, id);
+		if (!usuarioId || !id) {
 			return res.status(400).json({
 				success: false,
 				error: "Faltan datos",
@@ -90,7 +89,7 @@ const registroController = {
 
 		// controlo que el evento exista
 
-		eventos.BuscarEventoPorId(eventoId, (err, results) => {
+		eventos.BuscarEventoPorId(id, (err, results) => {
 			if (err) {
 				console.log("Se produjo el siguiente error:" + err);
 				return res.status(400).json({ success: false, error: err });
@@ -109,7 +108,7 @@ const registroController = {
 					});
 				}
 
-				registros.MarcarAsistencia(usuarioId, eventoId, asistencia, (err, results) => {
+				registros.MarcarAsistencia(usuarioId, id, asistencia, (err, results) => {
 					if (err) {
 						console.log("Se produjo el siguiente error:" + err);
 						return res.status(400).json({ success: false, error: err });
@@ -121,49 +120,130 @@ const registroController = {
 	},
 
 	listarConfirmados: (req, res) => {
-		const { eventoId } = req.body;
-		if (!eventoId) {
+		const { id } = req.params;
+
+		if (!id) {
 			return res.status(400).json({
 				success: false,
 				error: "Faltan datos",
 			});
 		}
-		registros.listarConfirmados( eventoId, (err, results) => {
+
+		eventos.BuscarEventoPorId(id, (err, resultsEvento) => {
 			if (err) {
-				console.log("Se produjo el siguiente error:" + err);
-				return res.status(400).json({ success: false, error: err });
+				console.error("Se produjo el siguiente error:", err);
+				return res.status(500).json({
+					success: false,
+					error: "Error interno del servidor",
+				});
 			}
-            const evento = {
-                Nombre: results[0].Nombre,
-                Fecha: results[0].Fecha,
-                Ubicacion: results[0].Ubicacion,
-                Descripcion: results[0].Descripcion,
-            };
-        
-            // Lista de usuarios confirmados, sin la repetición de datos del evento
-            const usuarios = results.map(row => ({
-                Nombre: row.NombreUsuario, 
-                Correo: row.Correo,
-                Asistencia: row.Asistencia
-            }));
-			return res.status(200).json({ success: true, data: { evento, usuarios } });
+
+			if (!resultsEvento || resultsEvento.length === 0) {
+				return res.status(404).json({
+					success: false,
+					error: "El evento no existe",
+				});
+			}
+
+			const evento = {
+				id: resultsEvento[0].Id,
+				nombre: resultsEvento[0].Nombre,
+				fecha: resultsEvento[0].Fecha,
+				ubicacion: resultsEvento[0].Ubicacion,
+				descripcion: resultsEvento[0].Descripcion,
+			};
+
+			registros.listarConfirmados(id, (err, resultsRegistro) => {
+				if (err) {
+					console.error("Se produjo el siguiente error:", err);
+					return res.status(500).json({
+						success: false,
+						error: "Error interno del servidor",
+					});
+				}
+
+				if (!resultsRegistro || resultsRegistro.length === 0) {
+					return res.status(200).json({
+						success: true,
+						data: { evento, usuarios: [] }, // El evento existe, pero no hay usuarios confirmados
+					});
+				}
+
+				const usuarios = resultsRegistro.map((row) => ({
+					id: row.Id,
+					nombre: row.NombreUsuario,
+					correo: row.Correo,
+					asistencia: row.Asistencia,
+				}));
+
+				return res.status(200).json({
+					success: true,
+					data: { evento, usuarios },
+				});
+			});
 		});
 	},
 
 	EmitirCertificado: (req, res) => {
-		const { id_asistente, id_evento } = req.body;
-		if (!id_evento || !id_asistente) {
+		const { id } = req.params;
+		const  idUsuario  = req.session.user.UsuarioId;
+		if (!id || !idUsuario) {
 			return res.status(400).json({
 				success: false,
 				error: "Faltan datos",
 			});
 		}
-		Participacion.EmitirCertificado(id_asistente, id_evento, (err, results) => {
+		eventos.EmitirCertificado(id, idUsuario, (err, results) => {
 			if (err) {
 				console.log("Se produjo el siguiente error:" + err);
 				return res.status(400).json({ success: false, error: err });
 			}
 			return res.status(200).json({ success: true, data: results });
+		});
+	},
+
+	CancelarParticipacion: (req, res) => {
+		const { id } = req.params; // id del evento
+		const iduser = req.session.user.UsuarioId;
+		if (!id || !iduser) {
+			return res.status(400).json({
+				success: false,
+				error: "Faltan datos",
+			});
+		}
+	
+		// Primero buscar el evento
+		eventos.BuscarEventoPorId(id, (err, results) => {
+			if (err) {
+				console.log("Se produjo el siguiente error:" + err);
+				return res.status(400).json({ success: false, error: err });
+			}
+	
+			// Si no se encuentra el evento
+			if (results.length === 0) {
+				return res.status(404).json({
+					success: false,
+					error: "Evento no encontrado",
+				});
+			}
+	
+			// Verificar si el evento ya pasó
+			const evento = results[0];
+			if (evento.Fecha < new Date()) {
+				return res.status(400).json({
+					success: false,
+					error: "El evento ya pasó, no se puede cancelar la participación",
+				});
+			}
+	
+			// Cancelar participación
+			registros.CancelarParticipacion(id, iduser, (err, results) => {
+				if (err) {
+					console.log("Se produjo el siguiente error:" + err);
+					return res.status(400).json({ success: false, error: err });
+				}
+				return res.status(200).json({ success: true, data: results });
+			});
 		});
 	},
 };

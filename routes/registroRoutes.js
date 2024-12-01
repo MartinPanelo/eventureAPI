@@ -4,12 +4,14 @@ const registros = require("../controllers/registroController");
 const isAuthenticated = require("../middleware/Authenticated");
 const isAuthorized = require("../middleware/authorized");
 
-router.put("/agregarParticipacion",isAuthenticated, isAuthorized(["cliente"]), registros.AgregarParticipacion);
+/*  */router.post("/agregarParticipacion",isAuthenticated, isAuthorized(["cliente"]), registros.AgregarParticipacion);
 
-router.put("/marcarAsistencia",isAuthenticated, isAuthorized(["organizador"]), registros.MarcarAsistencia);
+/*  */router.put("/marcarAsistencia/:id",isAuthenticated, isAuthorized(["organizador"]), registros.MarcarAsistencia);
 
-router.get("/listarConfirmados",isAuthenticated, isAuthorized(["organizador"]), registros.listarConfirmados);
+/*  */router.get("/listarConfirmados/:id",/* isAuthenticated, isAuthorized(["organizador"]), */ registros.listarConfirmados);
 
-router.get("/emitirCertificado",isAuthenticated, isAuthorized(["cliente"]), registros.EmitirCertificado);
+/*  */router.get("/emitirCertificado/:id",isAuthenticated, isAuthorized(["cliente"]), registros.EmitirCertificado);
+
+/*  */router.delete("/eliminarParticipacion/:id",isAuthenticated, isAuthorized(["cliente"]), registros.CancelarParticipacion);
 
 module.exports = router;
