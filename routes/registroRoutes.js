@@ -8,7 +8,7 @@ const isAuthorized = require("../middleware/authorized");
 
 /*  */router.put("/marcarAsistencia/:id",isAuthenticated, isAuthorized(["organizador"]), registros.MarcarAsistencia);
 
-/*  */router.get("/listarConfirmados/:id",/* isAuthenticated, isAuthorized(["organizador"]), */ registros.listarConfirmados);
+/*  */router.get("/listarConfirmados/:id",isAuthenticated, isAuthorized(["organizador"]), registros.listarConfirmados);
 
 /*  */router.get("/emitirCertificado/:id",isAuthenticated, isAuthorized(["cliente"]), registros.EmitirCertificado);
 
