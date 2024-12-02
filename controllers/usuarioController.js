@@ -82,6 +82,11 @@ const asistenteController = {
 
 				return res.status(200).json({
 					success: true,
+					usuario: {
+						UsuarioId: usuario.Id,
+						Rol: usuario.Rol,
+						Correo: usuario.Correo,
+					}
 				});
 			});
 		});
